@@ -1,0 +1,231 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projects       Project[]
+  brands         Brand[]
+  assets         Asset[]
+  emailTemplates EmailTemplate[]
+  emailLogs      EmailLog[]
+  clients        Client[]
+  tags           Tag[]
+  passwordResets PasswordReset[]
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  email     String?
+  company   String?
+  phone     String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects Project[]
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  userId       String
+  clientId     String?
+  name         String
+  category     String   // Logo, Brochure, Poster, Packaging, Digital, Other
+  status       String   @default("active") // active, completed, on_hold, cancelled
+  deadline     DateTime?
+  notes        String?
+  thumbnailUrl String?
+  timeSpent    Int      @default(0) // time spent in seconds
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    Client?      @relation(fields: [clientId], references: [id])
+  brief     Brief?
+  invoice   Invoice?
+  assets    Asset[]
+  emailLogs EmailLog[]
+  tags      ProjectTag[]
+  tasks     Task[]
+}
+
+model Brief {
+  id           String   @id @default(cuid())
+  projectId    String   @unique
+  title        String
+  description  String?
+  clientName   String?
+  projectType  String?
+  deliverables Json?    // Array of deliverable items
+  specs        Json?    // Technical specifications (size, resolution, color mode, format, bleed)
+  references   Json?    // Reference links/images
+  attachments  String[] // File URLs
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Brand {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  logoUrl        String?
+  secondaryLogoUrl String?
+  primaryColor   String?
+  secondaryColor String?
+  accentColor    String?
+  neutralColor   String?
+  fontHeading    String?
+  fontBody       String?
+  guidelines     Json?    // Detailed brand guidelines
+  versions       Json?    // Version history
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets Asset[]
+}
+
+model Asset {
+  id           String   @id @default(cuid())
+  userId       String
+  brandId      String?
+  projectId    String?
+  name         String
+  type         String   // font, color, template, icon, image, mockup
+  category     String?
+  fileUrl      String
+  fileSize     Int?
+  mimeType     String?
+  tags         String[]
+  metadata     Json?    // Additional metadata (font metrics, image dimensions, etc.)
+  license      Json?    // License info
+  usageCount   Int      @default(0)
+  version      Int      @default(1)
+  revisionNotes String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand   Brand?   @relation(fields: [brandId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  items     Json     // Array of { description, qty, price }
+  tax       Float?   @default(0)
+  discount  Float?   @default(0)
+  status    String   @default("draft") // draft, sent, paid
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  subject   String
+  body      String
+  category    String   // order, followup, revision, confirmation, thank_you
+  isDefault   Boolean  @default(false)
+  
+  // Customization fields
+  headerText  String?  @default("DesignFlow")
+  headerColor String?  @default("linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)")
+  headerAlign String?  @default("center") // left, center, right
+  bodyAlign   String?  @default("left")
+  footerText  String?  @default("Email ini dikirim secara otomatis melalui DesignFlow.")
+  footerAlign String?  @default("center")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailLogs EmailLog[]
+}
+
+model EmailLog {
+  id             String    @id @default(cuid())
+  userId         String
+  projectId      String?
+  templateId     String?
+  recipientEmail String
+  recipientName  String?
+  subject        String
+  body           String
+  attachments    String[]
+  status         String    @default("sent") // sent, failed, pending
+  errorMessage   String?
+  sentAt         DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+}
+
+model Tag {
+  id     String @id @default(cuid())
+  name   String
+  color  String?
+  userId String
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects ProjectTag[]
+}
+
+model ProjectTag {
+  projectId String
+  tagId     String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}

@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: designflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: designflow
+      POSTGRES_PASSWORD: designflow123
+      POSTGRES_DB: designflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: designflow_mail
+    restart: unless-stopped
+    ports:
+      - '1025:1025'   # SMTP port
+      - '8025:8025'   # Web UI
+
+volumes:
+  postgres_data:
