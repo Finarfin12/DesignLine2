@@ -8,7 +8,7 @@
 <h1 align="center">DesignLine — Workflow Hub</h1>
 
 <p align="center">
-  <strong>All-in-one workspace for print shops and graphic designers.</strong>
+  <strong>All-in-one workspace for graphic designers.</strong>
   <br>
   Project management, brand kit library, digital asset management, moodboards,
   <br>color palette extraction, invoicing, client briefs, and email delivery.
