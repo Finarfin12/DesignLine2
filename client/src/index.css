@@ -217,6 +217,42 @@
   .dark .table tbody tr:hover {
     @apply bg-slate-700/30 !important;
   }
+  /* ─── Color Slider ──────────────────────────────────── */
+  .color-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 10px;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+  }
+  .color-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    cursor: pointer;
+  }
+  .color-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    cursor: pointer;
+  }
+
+  .dark .color-slider::-webkit-slider-thumb {
+    border-color: #334155 !important;
+  }
+  .dark .color-slider::-moz-range-thumb {
+    border-color: #334155 !important;
+  }
+
   .dark .btn-secondary {
     @apply bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700 hover:text-slate-100 !important;
   }

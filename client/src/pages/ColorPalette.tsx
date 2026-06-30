@@ -1,8 +1,43 @@
 import { useState } from 'react';
-import { Upload, Copy, RefreshCcw, Palette, Image as ImageIcon, Save, Trash2 } from 'lucide-react';
+import { Upload, Copy, RefreshCcw, Palette, Image as ImageIcon, Save, Trash2, Plus, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { showAlert } from '../lib/alert';
+
+function isLightColor(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
+}
+
+function hslToHex(h: number, s: number, l: number) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return Math.round(255 * (l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1))).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+}
+
+function hexToHsl(hex: string): [number, number, number] {
+  let r = parseInt(hex.slice(1, 3), 16) / 255;
+  let g = parseInt(hex.slice(3, 5), 16) / 255;
+  let b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+}
 
 export default function ColorPalette() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -10,6 +45,13 @@ export default function ColorPalette() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [paletteName, setPaletteName] = useState<string>('');
+  const [hexInput, setHexInput] = useState('');
+  const [pickerH, setPickerH] = useState(0);
+  const [pickerS, setPickerS] = useState(100);
+  const [pickerL, setPickerL] = useState(50);
+  const [pickerHexInput, setPickerHexInput] = useState('');
+
+  const pickerHex = hslToHex(pickerH, pickerS, pickerL);
   const queryClient = useQueryClient();
 
   const { data: savedPalettes = [] } = useQuery({
@@ -140,6 +182,62 @@ export default function ColorPalette() {
     img.src = url;
   };
 
+  const addHexColor = () => {
+    let hex = hexInput.trim();
+    if (!hex) return;
+    if (!hex.startsWith('#')) hex = '#' + hex;
+    if (!/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex)) {
+      showAlert.error('Format Salah', 'Gunakan format hex yang valid (mis: #FF5733)');
+      return;
+    }
+    if (hex.length === 4) {
+      hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+    }
+    if (palette.includes(hex.toUpperCase())) {
+      showAlert.error('Duplikat', 'Warna ini sudah ada di palet');
+      return;
+    }
+    setPalette(prev => [...prev, hex.toUpperCase()]);
+    setHexInput('');
+  };
+
+  const removeHexColor = (index: number) => {
+    setPalette(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleHexKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addHexColor();
+    }
+  };
+
+  const handlePickerHexChange = (value: string) => {
+    setPickerHexInput(value);
+    if (/^#([0-9A-Fa-f]{6})$/.test(value)) {
+      try {
+        const [h, s, l] = hexToHsl(value.toUpperCase());
+        setPickerH(h); setPickerS(s); setPickerL(l);
+      } catch { /* ignore invalid */ }
+    }
+  };
+
+  const resetPicker = () => {
+    setPickerH(0); setPickerS(100); setPickerL(50);
+    setPickerHexInput('');
+  };
+
+  const addPickerColor = () => {
+    if (pickerHex === '#FF0000' && pickerS === 100 && pickerL === 50 && pickerH === 0 && palette.length === 0) {
+      // default red, probably intentional
+    }
+    if (palette.includes(pickerHex)) {
+      showAlert.error('Duplikat', 'Warna ini sudah ada di palet');
+      return;
+    }
+    setPalette(prev => [...prev, pickerHex]);
+  };
+
   const copyHex = (hex: string) => {
     navigator.clipboard.writeText(hex);
     setCopied(hex);
@@ -151,7 +249,7 @@ export default function ColorPalette() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 flex items-center gap-2"><Palette className="w-6 h-6 text-primary-500" /> Color Palette Generator</h1>
-          <p className="text-surface-500 text-sm mt-1">Ekstrak palet warna yang harmonis dari gambar atau foto referensimu.</p>
+          <p className="text-surface-500 text-sm mt-1">Ekstrak palet dari gambar atau buat sendiri dengan kode hex.</p>
         </div>
       </div>
 
@@ -184,12 +282,12 @@ export default function ColorPalette() {
 
         {/* Results Section */}
         <div className="card p-6 flex flex-col h-[400px]">
-          <h2 className="font-semibold text-surface-900 mb-4">Palet Hasil Ekstraksi</h2>
+          <h2 className="font-semibold text-surface-900 mb-4">Palet Warna</h2>
 
-          {!imageUrl ? (
+          {palette.length === 0 && !imageUrl ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
               <ImageIcon className="w-12 h-12 text-surface-300 mb-3" />
-              <p className="text-surface-500 text-sm">Palet warna akan muncul di sini setelah kamu mengunggah gambar referensi.</p>
+              <p className="text-surface-500 text-sm">Palet warna akan muncul di sini. Upload gambar untuk ekstraksi otomatis, atau tambah manual lewat input hex di bawah.</p>
             </div>
           ) : isProcessing ? (
             <div className="flex-1 flex items-center justify-center">
@@ -200,26 +298,78 @@ export default function ColorPalette() {
             </div>
           ) : (
             <>
-              {/* Color Swatches - fixed height horizontal bar */}
+              {/* Color Swatches */}
               <div className="flex rounded-xl overflow-hidden h-48 shadow-sm border border-surface-200">
                 {palette.map((hex, i) => (
                   <div
                     key={i}
                     className="flex-1 flex flex-col items-center justify-end pb-4 cursor-pointer hover:flex-[1.3] transition-all duration-200 group relative"
                     style={{ backgroundColor: hex }}
-                    onClick={() => copyHex(hex)}
                   >
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="bg-white/90 backdrop-blur text-surface-900 text-xs font-bold px-2 py-1 rounded shadow-sm">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1 flex gap-1">
+                      <span
+                        className="bg-white/90 backdrop-blur text-surface-900 text-xs font-bold px-2 py-1 rounded shadow-sm cursor-pointer"
+                        onClick={() => copyHex(hex)}
+                      >
                         {copied === hex ? 'DISALIN!' : hex.toUpperCase()}
                       </span>
+                      <button
+                        onClick={() => removeHexColor(i)}
+                        className="bg-white/80 backdrop-blur rounded-full p-1 shadow-sm hover:bg-white transition-colors"
+                        title="Hapus warna"
+                      >
+                        <X className="w-3 h-3 text-red-500" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Save Form - separated from swatches */}
-              <div className="mt-4 pt-4 border-t border-surface-200">
+              {/* Manual Hex Input */}
+              <div className="mt-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm">#</span>
+                    <input
+                      type="text"
+                      className="input pl-7"
+                      placeholder="FF5733"
+                      value={hexInput}
+                      onChange={e => setHexInput(e.target.value)}
+                      onKeyDown={handleHexKeyDown}
+                    />
+                  </div>
+                  <button onClick={addHexColor} className="btn-primary shrink-0" title="Tambah warna">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Color Chips */}
+              {palette.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {palette.map((hex, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-surface-200 shadow-sm text-[11px] font-semibold cursor-pointer"
+                      style={{ backgroundColor: hex, color: isLightColor(hex) ? '#1a1a2e' : '#ffffff' }}
+                      onClick={() => copyHex(hex)}
+                      title={`Klik untuk salin ${hex}`}
+                    >
+                      <span>{copied === hex ? '✓' : hex}</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); removeHexColor(i); }}
+                        className="hover:opacity-70 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Save Form */}
+              <div className="mt-auto pt-4 border-t border-surface-200">
                 <label className="text-sm font-semibold text-surface-900 mb-2 block">Simpan Palet</label>
                 <div className="flex gap-2">
                   <input
@@ -241,6 +391,91 @@ export default function ColorPalette() {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Color Picker */}
+      <div className="card p-6">
+        <h2 className="font-semibold text-surface-900 mb-4 flex items-center gap-2">
+          <Palette className="w-5 h-5 text-primary-500" /> Color Picker
+        </h2>
+        <div className="flex gap-6">
+          {/* Preview */}
+          <div className="flex flex-col items-center gap-3 shrink-0">
+            <div
+              className="w-28 h-28 rounded-xl border-2 border-surface-200 shadow-sm transition-colors duration-100"
+              style={{ backgroundColor: pickerHex }}
+            />
+            <div className="flex gap-1">
+              <input
+                type="text"
+                className="input w-24 text-center text-xs font-mono font-bold"
+                value={pickerHexInput || pickerHex}
+                onChange={e => handlePickerHexChange(e.target.value)}
+                onFocus={e => { setPickerHexInput(e.target.value || pickerHex); e.target.select(); }}
+                onBlur={() => setPickerHexInput('')}
+              />
+              <button
+                onClick={() => { navigator.clipboard.writeText(pickerHex); setCopied(pickerHex); setTimeout(() => setCopied(null), 2000); }}
+                className="btn-secondary p-2"
+                title="Salin hex"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+            <button onClick={addPickerColor} className="btn-primary w-full text-sm py-2">
+              <Plus className="w-4 h-4" /> Tambah ke Palet
+            </button>
+            <button onClick={resetPicker} className="btn-secondary text-sm py-2 w-full">
+              <RefreshCcw className="w-3.5 h-3.5" /> Reset
+            </button>
+          </div>
+
+          {/* Sliders */}
+          <div className="flex-1 space-y-4">
+            <div>
+              <label className="flex justify-between text-xs font-semibold text-surface-700 mb-1.5">
+                <span>Hue</span><span className="text-surface-400">{pickerH}°</span>
+              </label>
+              <input
+                type="range" min={0} max={360}
+                value={pickerH}
+                onChange={e => setPickerH(Number(e.target.value))}
+                className="color-slider w-full"
+                style={{
+                  background: `linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%))`,
+                }}
+              />
+            </div>
+            <div>
+              <label className="flex justify-between text-xs font-semibold text-surface-700 mb-1.5">
+                <span>Saturasi</span><span className="text-surface-400">{pickerS}%</span>
+              </label>
+              <input
+                type="range" min={0} max={100}
+                value={pickerS}
+                onChange={e => setPickerS(Number(e.target.value))}
+                className="color-slider w-full"
+                style={{
+                  background: `linear-gradient(to right, hsl(${pickerH},0%,${pickerL}%), hsl(${pickerH},100%,${pickerL}%))`,
+                }}
+              />
+            </div>
+            <div>
+              <label className="flex justify-between text-xs font-semibold text-surface-700 mb-1.5">
+                <span>Kecerahan</span><span className="text-surface-400">{pickerL}%</span>
+              </label>
+              <input
+                type="range" min={0} max={100}
+                value={pickerL}
+                onChange={e => setPickerL(Number(e.target.value))}
+                className="color-slider w-full"
+                style={{
+                  background: `linear-gradient(to right, hsl(${pickerH},${pickerS}%,0%), hsl(${pickerH},${pickerS}%,50%), hsl(${pickerH},${pickerS}%,100%))`,
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
