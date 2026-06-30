@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Package, Search, Upload, Trash2, X, Image, FileText, Type, Star, Pencil } from 'lucide-react';
+import { Package, Search, Upload, Trash2, X, Image, FileText, Type, Star, Pencil, Maximize2 } from 'lucide-react';
 import api, { getFileUrl } from '../lib/api';
 
 const ASSET_TYPES = ['font', 'color', 'template', 'icon', 'image', 'mockup', 'palette'] as const;
@@ -18,7 +18,7 @@ const uploadSchema = z.object({
 });
 type UploadForm = z.infer<typeof uploadSchema>;
 
-interface Asset { id: string; name: string; type: string; fileUrl: string; fileSize: number; mimeType: string; usageCount: number; createdAt: string; metadata?: { colors?: string[]; description?: string }; brand?: { name: string } }
+interface Asset { id: string; name: string; type: string; fileUrl: string; fileSize: number; mimeType: string; usageCount: number; createdAt: string; projectId?: string; metadata?: { colors?: string[]; description?: string }; brand?: { name: string } }
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -36,6 +36,7 @@ export default function Assets() {
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [fontPreview, setFontPreview] = useState<Asset | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useQuery({
@@ -77,7 +78,7 @@ export default function Assets() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['assets'] }); setEditAsset(null); },
   });
 
-  const assets: Asset[] = (data?.assets ?? []).filter((a: Asset) => a.type !== 'moodboard');
+  const assets: Asset[] = (data?.assets ?? []).filter((a: Asset) => a.type !== 'moodboard' && !a.projectId);
   const isImage = (mime?: string) => !!mime?.startsWith('image/');
 
   return (
@@ -128,7 +129,12 @@ export default function Assets() {
               <div key={a.id} className="card group relative overflow-hidden bg-white hover:border-surface-300">
                 {/* Thumbnail / Icon */}
                 <div className="aspect-square bg-surface-50 flex items-center justify-center overflow-hidden border-b border-surface-200">
-                  {a.type === 'palette' && a.metadata?.colors ? (
+                  {a.type === 'font' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3">
+                      <p className="text-2xl font-bold text-surface-800 mb-1 truncate w-full text-center" style={{ fontFamily: `'${a.name}', serif` }}>Aa</p>
+                      <p className="text-[10px] text-surface-400 truncate w-full text-center">The quick brown fox</p>
+                    </div>
+                  ) : a.type === 'palette' && a.metadata?.colors ? (
                     <div className="w-full h-full flex">
                       {a.metadata.colors.map((hex: string, i: number) => (
                         <div key={i} className="flex-1" style={{ backgroundColor: hex }} />
@@ -142,6 +148,11 @@ export default function Assets() {
                 </div>
                 {/* Hover actions */}
                 <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {a.type === 'font' && (
+                    <button onClick={() => setFontPreview(a)} className="btn-ghost btn-icon bg-white/90 backdrop-blur hover:bg-white shadow-sm" title="Lihat font">
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  )}
                   <button onClick={() => { setEditAsset(a); setEditName(a.name); setEditDesc(a.metadata?.description || ''); }} className="btn-ghost btn-icon bg-white/90 backdrop-blur hover:bg-white shadow-sm" title="Edit">
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -253,6 +264,44 @@ export default function Assets() {
                 >
                   {updateMutation.isPending ? 'Menyimpan...' : 'Simpan'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Font Preview Modal */}
+      {fontPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setFontPreview(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-200">
+              <div>
+                <h2 className="font-bold text-surface-900 text-lg">{fontPreview.name}</h2>
+                <p className="text-sm text-surface-500">{fontPreview.category || 'Font'}</p>
+              </div>
+              <button onClick={() => setFontPreview(null)} className="text-surface-400 hover:text-surface-900"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-6 space-y-8">
+              <style>{`@font-face { font-family: 'preview-${fontPreview.id}'; src: url('${getFileUrl(fontPreview.fileUrl)}'); }`}</style>
+              <div style={{ fontFamily: `'preview-${fontPreview.id}', serif` }}>
+                <div className="mb-8">
+                  <p className="text-[10px] uppercase tracking-wider text-surface-400 font-sans mb-2">Large Display</p>
+                  <p className="text-5xl leading-tight font-bold">DesignLine</p>
+                </div>
+                <div className="mb-8">
+                  <p className="text-[10px] uppercase tracking-wider text-surface-400 font-sans mb-2">Medium</p>
+                  <p className="text-2xl leading-relaxed">The quick brown fox jumps over the lazy dog</p>
+                </div>
+                <div className="mb-8">
+                  <p className="text-[10px] uppercase tracking-wider text-surface-400 font-sans mb-2">Body Text</p>
+                  <p className="text-base leading-relaxed">Typography is the art and technique of arranging type to make written language legible, readable and appealing when displayed. The arrangement of type involves selecting typefaces, point sizes, line lengths, line-spacing, and letter-spacing.</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-surface-400 font-sans mb-2">Character Set</p>
+                  <p className="text-lg leading-relaxed tracking-wider">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</p>
+                  <p className="text-lg leading-relaxed tracking-wider mt-2">a b c d e f g h i j k l m n o p q r s t u v w x y z</p>
+                  <p className="text-lg leading-relaxed mt-2">0 1 2 3 4 5 6 7 8 9 . , : ; ! ? ( ) @ # $ % & * + - = /</p>
+                </div>
               </div>
             </div>
           </div>

@@ -13,17 +13,17 @@ import api, { getFileUrl } from '../lib/api';
 
 
 const STATUS_BADGE: Record<string, string> = {
-  active: 'badge-active', completed: 'badge-completed',
-  on_hold: 'badge-on_hold', cancelled: 'badge-cancelled',
+  draft: 'badge-default', active: 'badge-active',
+  review: 'badge-review', completed: 'badge-completed',
 };
 const STATUS_LABEL: Record<string, string> = {
-  active: 'Aktif', completed: 'Selesai', on_hold: 'Ditunda', cancelled: 'Dibatalkan',
+  draft: 'Draft', active: 'Aktif', review: 'Review', completed: 'Selesai',
 };
 
 const projectSchema = z.object({
   name: z.string().min(1),
   category: z.enum(['Logo', 'Brochure', 'Poster', 'Packaging', 'Digital', 'UI/UX', 'Other']),
-  status: z.enum(['draft', 'active', 'on_hold', 'completed']),
+  status: z.enum(['draft', 'active', 'review', 'completed']),
   deadline: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -715,7 +715,7 @@ export default function ProjectDetail() {
                 <button onClick={() => deleteTask.mutate(task.id)} className="text-surface-400 hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
               </div>
             ))}
-            {project.tasks?.length === 0 && <p className="text-sm text-surface-500 text-center py-4">Belum ada tugas. Pecah proyek ini jadi langkah kecil!</p>}
+            {(!project.tasks || project.tasks.length === 0) && <p className="text-sm text-surface-500 text-center py-4">Belum ada tugas. Pecah proyek ini jadi langkah kecil!</p>}
           </div>
           <form onSubmit={e => { e.preventDefault(); if (newTaskTitle.trim()) addTask.mutate(); }} className="flex gap-2">
             <input className="input flex-1" placeholder="Tambah tugas baru (Misal: Wireframe Homepage)..." value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} disabled={addTask.isPending} />

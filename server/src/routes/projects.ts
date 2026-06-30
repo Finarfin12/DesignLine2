@@ -31,7 +31,7 @@ router.use(authenticate);
 const projectSchema = z.object({
   name: z.string().min(1),
   category: z.enum(['Logo', 'Brochure', 'Poster', 'Packaging', 'Digital', 'UI/UX', 'Other']),
-  status: z.enum(['draft', 'active', 'on_hold', 'completed']).default('active'),
+  status: z.enum(['draft', 'active', 'review', 'completed']).default('active'),
   clientId: z.string().optional(),
   deadline: z.string().datetime().optional(),
   notes: z.string().optional(),
@@ -231,6 +231,7 @@ const createTaskSchema = z.object({
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
+  status: z.enum(['todo', 'in_progress', 'done']).optional(),
   isCompleted: z.boolean().optional(),
 });
 

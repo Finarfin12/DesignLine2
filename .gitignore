@@ -8,3 +8,12 @@ dist/
 *.swp
 *.swo
 server/uploads/
+ANALYSIS_BUGS_FEATURES.md
+DesignFlow_Gap_Analysis.md
+DesignFlow_Strategy.md
+Gap_Analysis_PRD_vs_Code.md
+PRD-DesignFlow.md
+TASK_FOR_ANTIGRAVITY.md
+server/check.js
+server/check_logs.js
+server/test_api.js

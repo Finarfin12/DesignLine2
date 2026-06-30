@@ -223,6 +223,7 @@ model Task {
   id          String   @id @default(cuid())
   projectId   String
   title       String
+  status      String   @default("todo")   // todo, in_progress, done
   isCompleted Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
