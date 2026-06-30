@@ -27,7 +27,7 @@
 
 | Module | Description |
 |--------|-------------|
-| **Project Management** | Track status, deadlines, briefs, task lists, and invoices per project |
+| **Project Management** | Kanban board with drag-and-drop (Draft → Active → Review → Selesai), task checklists, briefs, and invoices |
 | **Brand Kit** | Manage logos, colors, fonts, and brand guidelines in one place |
 | **Digital Assets** | Upload, tag, version, and license design files (images, fonts, templates) |
 | **Moodboard** | Drag-and-drop visual reference board with lightbox detail view |
@@ -153,6 +153,17 @@ Authenticated endpoints require the header `Authorization: Bearer <token>`.
 | `PUT` | `/api/brands/:id` | Update a brand |
 | `DELETE` | `/api/brands/:id` | Delete a brand |
 
+### Project Status
+
+Projects supports four lifecycle statuses that align with the Kanban board columns:
+
+| Status | Label | Description |
+|--------|-------|-------------|
+| `draft` | Draft | Initial planning phase |
+| `active` | Aktif | In progress |
+| `review` | Review | Awaiting approval |
+| `completed` | Selesai | Finished |
+
 ### Assets
 
 | Method | Endpoint | Description |
@@ -208,7 +219,7 @@ designline/
 │   │   │   └── alert.ts             # SweetAlert2 helpers
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx        # Overview with stats
-│   │   │   ├── Projects.tsx         # Project list
+│   │   │   ├── Projects.tsx         # Grid & Kanban project views
 │   │   │   ├── ProjectDetail.tsx    # Single project with tasks
 │   │   │   ├── Moodboard.tsx        # Drag-and-drop visual board
 │   │   │   ├── Ideate.tsx           # Rich text notes
