@@ -9,8 +9,8 @@ import { showAlert } from '../lib/alert';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import api, { getFileUrl } from '../lib/api';
-
-
+import ReactMarkdown from 'react-markdown';
+import MarkdownEditor from '../components/MarkdownEditor';
 
 const STATUS_BADGE: Record<string, string> = {
   draft: 'badge-default', active: 'badge-active',
@@ -224,7 +224,7 @@ export default function ProjectDetail() {
     } : undefined,
   });
 
-  const { register: rb, handleSubmit: hb, reset: resetBrief, setValue: setBriefValue, getValues: getBriefValues } = useForm<BriefForm>({
+  const { register: rb, handleSubmit: hb, reset: resetBrief, setValue: setBriefValue, getValues: getBriefValues, watch } = useForm<BriefForm>({
     resolver: zodResolver(briefSchema),
     values: project?.brief ? {
       title: project.brief.title,
@@ -568,7 +568,7 @@ export default function ProjectDetail() {
           <form onSubmit={hb(d => saveBrief.mutate(d))} className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2"><label className="label">Judul Brief *</label><input className="input" placeholder="Brief Logo Brand ABC" {...rb('title')} /></div>
-              <div className="col-span-2"><label className="label">Deskripsi Proyek</label><textarea className="textarea" rows={3} placeholder="Deskripsi singkat proyek..." {...rb('description')} /></div>
+              <div className="col-span-2"><label className="label">Deskripsi Proyek</label><MarkdownEditor value={watch('description')} onChange={v => setBriefValue('description', v)} placeholder="Deskripsi proyek dalam Markdown..." rows={6} /></div>
               <div><label className="label">Nama Klien</label><input className="input" {...rb('clientName')} /></div>
               <div><label className="label">Tipe Proyek</label><input className="input" placeholder="Logo Design" {...rb('projectType')} /></div>
               <div className="col-span-2"><label className="label">Deliverables (pisah dengan koma)</label><input className="input" placeholder="Logo PNG, Logo SVG, Brand Guidelines" {...rb('deliverables')} /></div>
@@ -605,7 +605,7 @@ export default function ProjectDetail() {
               <div><span className="text-surface-500 font-medium">Judul</span><p className="text-surface-900 font-medium mt-0.5">{project.brief.title}</p></div>
               {project.brief.clientName && <div><span className="text-surface-500 font-medium">Klien</span><p className="text-surface-900 mt-0.5">{project.brief.clientName}</p></div>}
               {project.brief.projectType && <div><span className="text-surface-500 font-medium">Tipe</span><p className="text-surface-900 mt-0.5">{project.brief.projectType}</p></div>}
-              {project.brief.description && <div className="col-span-2"><span className="text-surface-500 font-medium">Deskripsi</span><p className="text-surface-800 mt-0.5">{project.brief.description}</p></div>}
+              {project.brief.description && <div className="col-span-2"><span className="text-surface-500 font-medium">Deskripsi</span><div className="prose prose-sm prose-surface max-w-none mt-0.5"><ReactMarkdown>{project.brief.description}</ReactMarkdown></div></div>}
             </div>
             {project.brief.deliverables?.length > 0 && (
               <div><p className="text-surface-500 text-sm mb-1.5">Deliverables</p>

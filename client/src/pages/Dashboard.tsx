@@ -5,6 +5,10 @@ import api from '../lib/api';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
+const STATUS_LABEL_DASHBOARD: Record<string, string> = {
+  draft: 'Draft', active: 'Aktif', review: 'Review', completed: 'Selesai',
+};
+
 export default function Dashboard() {
   const { data: projectsData } = useQuery({ queryKey: ['projects-all'], queryFn: () => api.get('/api/projects?limit=100').then(r => r.data) });
   const { data: assetsData } = useQuery({ queryKey: ['assets-all'], queryFn: () => api.get('/api/assets?limit=1').then(r => r.data) });
@@ -19,11 +23,11 @@ export default function Dashboard() {
     const now = new Date();
     return completedDate.getMonth() === now.getMonth() && completedDate.getFullYear() === now.getFullYear();
   }).length;
-  const review = projects.filter((p: any) => p.status === 'on_hold').length;
+  const review = projects.filter((p: any) => p.status === 'review').length;
   const totalAssets = assetsData?.total ?? 0;
 
   const activeProjectsList = projects
-    .filter((p: any) => p.status === 'active' || p.status === 'on_hold')
+    .filter((p: any) => p.status === 'active' || p.status === 'review')
     .slice(0, 5);
 
   // Combine recent projects and emails into a single activity timeline
@@ -32,7 +36,7 @@ export default function Dashboard() {
       id: `p-${p.id}`,
       title: `${p.name} — status diubah menjadi ${p.status}`,
       time: p.updatedAt,
-      color: p.status === 'completed' ? 'bg-emerald-500' : p.status === 'on_hold' ? 'bg-amber-500' : 'bg-blue-500',
+      color: p.status === 'completed' ? 'bg-emerald-500' : p.status === 'review' ? 'bg-amber-500' : 'bg-blue-500',
     })),
     ...(emailsData?.logs ?? []).map((e: any) => ({
       id: `e-${e.id}`,
@@ -111,7 +115,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
-                    <span className={p.status === 'on_hold' ? 'badge-review' : 'badge-active'}>{p.status === 'on_hold' ? 'Review' : 'Aktif'}</span>
+                    <span className={p.status === 'review' ? 'badge-review' : p.status === 'completed' ? 'badge-completed' : p.status === 'draft' ? 'badge-default' : 'badge-active'}>{STATUS_LABEL_DASHBOARD[p.status] || p.status}</span>
                     <span className="text-xs text-surface-400 w-16 text-right">
                       {p.deadline ? `${Math.max(0, Math.ceil((new Date(p.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} hari` : '—'}
                     </span>
