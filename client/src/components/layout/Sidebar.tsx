@@ -28,16 +28,13 @@ interface Props {
 export default function Sidebar({ isOpen, onClose }: Props) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('designflow-theme') === 'dark');
 
   const toggleDark = () => {
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      setIsDark(true);
-    }
+    const next = !isDark;
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('designflow-theme', next ? 'dark' : 'light');
+    setIsDark(next);
   };
 
   const handleLogout = () => {
