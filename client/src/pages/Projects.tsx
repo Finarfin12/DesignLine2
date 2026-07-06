@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, DragOverlay } from '@dnd-kit/core';
 import api from '../lib/api';
+import TagManager from '../components/TagManager';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Nama proyek wajib diisi'),
@@ -54,8 +55,15 @@ function KanbanCard({ project }: { project: any }) {
       onClick={e => { if (isDragging) e.preventDefault(); }}
     >
       <h3 className="text-sm font-bold text-surface-900 mb-1 leading-tight">{project.name}</h3>
-      <p className="text-xs font-medium text-surface-500 mb-3">{project.client?.name ?? project.category}</p>
-      <div className="flex items-center justify-between border-t border-surface-100 pt-3">
+      <p className="text-xs font-medium text-surface-500 mb-2">{project.client?.name ?? project.category}</p>
+      {project.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {project.tags.map((t: any) => (
+            <span key={t.tag.id} className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold" style={{ backgroundColor: t.tag.color + '18', color: t.tag.color }}>{t.tag.name}</span>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between border-t border-surface-100 pt-2">
         <span className="px-2 py-1 bg-surface-50 text-surface-500 text-[9px] font-semibold rounded uppercase tracking-wider">{project.category}</span>
         {project.deadline && <span className="text-[10px] font-mono text-surface-400">{Math.max(0, Math.ceil((new Date(project.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} hr</span>}
       </div>
@@ -90,6 +98,9 @@ export default function Projects() {
   const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
   const [showModal, setShowModal] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  const { data: allTags = [] } = useQuery({ queryKey: ['tags'], queryFn: () => api.get('/api/tags').then(r => r.data) });
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -128,6 +139,11 @@ export default function Projects() {
   });
 
   const projects = data?.projects ?? [];
+  const filteredProjects = projects.filter((p: any) => {
+    if (selectedTagIds.length === 0) return true;
+    const projectTagIds = (p.tags ?? []).map((t: any) => t.tag.id);
+    return selectedTagIds.some(id => projectTagIds.includes(id));
+  });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -178,14 +194,42 @@ export default function Projects() {
         </div>
       )}
 
+      {/* Tag Filter */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {allTags.map((tag: any) => (
+            <button
+              key={tag.id}
+              onClick={() => setSelectedTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id])}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                selectedTagIds.includes(tag.id)
+                  ? 'border-current shadow-sm ring-1 ring-current'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+              style={{ backgroundColor: tag.color + '18', color: tag.color }}
+            >
+              {tag.name}
+            </button>
+          ))}
+          {selectedTagIds.length > 0 && (
+            <button
+              onClick={() => setSelectedTagIds([])}
+              className="px-2 py-1 rounded-full text-[11px] font-semibold text-surface-400 hover:text-surface-700 border border-dashed border-surface-300"
+            >
+              <X className="w-3 h-3 inline" /> Hapus filter
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Grid or Kanban */}
       {isLoading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : viewMode === 'kanban' ? (
         <DndContext sensors={sensors} onDragStart={(e) => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4 items-start min-h-[500px]">
-            {KANBAN_COLUMNS.map(colStatus => {
-              const colProjects = projects.filter((p: any) => p.status === colStatus);
+              {KANBAN_COLUMNS.map(colStatus => {
+              const colProjects = filteredProjects.filter((p: any) => p.status === colStatus);
               return <KanbanColumn key={colStatus} status={colStatus} projects={colProjects} />;
             })}
           </div>
@@ -195,7 +239,7 @@ export default function Projects() {
         </DndContext>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {projects.filter((p: any) => !status || p.status === status).map((p: any) => (
+          {filteredProjects.filter((p: any) => !status || p.status === status).map((p: any) => (
             <Link key={p.id} to={`/projects/${p.id}`} className={`card-hover p-6 border-t-[3px] ${STATUS_COLOR_TOP[p.status] || 'border-t-surface-400'} flex flex-col h-full`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
@@ -210,6 +254,13 @@ export default function Projects() {
               <p className="text-sm text-surface-600 line-clamp-2 my-4 flex-1">
                 {p.brief?.description || p.notes || 'Tidak ada deskripsi tersedia untuk proyek ini. Klik untuk menambah brief.'}
               </p>
+              {p.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {p.tags.map((t: any) => (
+                    <span key={t.tag.id} className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: t.tag.color + '18', color: t.tag.color }}>{t.tag.name}</span>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center justify-between pt-4 border-t border-surface-100">
                 <div className="flex gap-2">
                   <span className="px-2 py-1 bg-surface-50 text-surface-500 text-[10px] font-semibold rounded uppercase tracking-wider">{p.category}</span>

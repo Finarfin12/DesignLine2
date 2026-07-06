@@ -15,6 +15,7 @@ import assetRoutes from './routes/assets';
 import emailRoutes from './routes/emails';
 import clientRoutes from './routes/clients';
 import searchRoutes from './routes/search';
+import tagRoutes from './routes/tags';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/tags', tagRoutes);
 
 // ─── 404 ─────────────────────────────────────────────────────
 app.use((_req, res) => {

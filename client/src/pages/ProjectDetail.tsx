@@ -11,6 +11,7 @@ import { id } from 'date-fns/locale';
 import api, { getFileUrl } from '../lib/api';
 import ReactMarkdown from 'react-markdown';
 import MarkdownEditor from '../components/MarkdownEditor';
+import TagManager from '../components/TagManager';
 
 const STATUS_BADGE: Record<string, string> = {
   draft: 'badge-default', active: 'badge-active',
@@ -430,6 +431,9 @@ export default function ProjectDetail() {
             <span className={`${STATUS_BADGE[project.status]} badge`}>{STATUS_LABEL[project.status]}</span>
           </div>
           <p className="page-subtitle">{project.category}{project.client ? ` · ${project.client.name}` : ''}{project.deadline ? ` · Deadline: ${format(new Date(project.deadline), 'd MMM yyyy', { locale: id })}` : ''}</p>
+          <div className="mt-2">
+            <TagManager entityType="project" entityId={project.id} tags={project.tags ?? []} />
+          </div>
         </div>
         <div className="flex gap-2">
           <div className="flex items-center bg-surface-50 border border-surface-200 rounded-lg overflow-hidden mr-2 no-print">

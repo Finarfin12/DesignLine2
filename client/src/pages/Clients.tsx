@@ -7,6 +7,7 @@ import { Plus, Search, X, Building2, Phone, Mail, Trash2, Edit3 } from 'lucide-r
 import Swal from 'sweetalert2';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
+import TagManager from '../components/TagManager';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Nama klien wajib diisi'),
@@ -22,16 +23,20 @@ export default function Clients() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const { data: allTags = [] } = useQuery({ queryKey: ['tags'], queryFn: () => api.get('/api/tags').then(r => r.data) });
 
   const { data: clients = [], isLoading } = useQuery<any[]>({
     queryKey: ['clients'],
     queryFn: () => api.get('/api/clients').then(r => r.data),
   });
 
-  const filtered = clients.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    (c.company && c.company.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = clients.filter((c: any) => {
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !(c.company && c.company.toLowerCase().includes(search.toLowerCase()))) return false;
+    if (selectedTagIds.length === 0) return true;
+    const clientTagIds = (c.tags ?? []).map((t: any) => t.tag.id);
+    return selectedTagIds.some(id => clientTagIds.includes(id));
+  });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
@@ -74,6 +79,34 @@ export default function Clients() {
           <button onClick={() => { handleClose(); setShowModal(true); }} className="btn-primary rounded-md"><Plus className="w-4 h-4" /> Tambah Klien</button>
         </div>
       </div>
+
+      {/* Tag Filter */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {allTags.map((tag: any) => (
+            <button
+              key={tag.id}
+              onClick={() => setSelectedTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id])}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                selectedTagIds.includes(tag.id)
+                  ? 'border-current shadow-sm ring-1 ring-current'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+              style={{ backgroundColor: tag.color + '18', color: tag.color }}
+            >
+              {tag.name}
+            </button>
+          ))}
+          {selectedTagIds.length > 0 && (
+            <button
+              onClick={() => setSelectedTagIds([])}
+              className="px-2 py-1 rounded-full text-[11px] font-semibold text-surface-400 hover:text-surface-700 border border-dashed border-surface-300"
+            >
+              <X className="w-3 h-3 inline" /> Hapus filter
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="animate-pulse space-y-4">
@@ -120,6 +153,13 @@ export default function Clients() {
                     <div className="flex items-center gap-2 text-sm text-surface-600">
                       <Phone className="w-4 h-4 text-surface-400" />
                       <span>{client.phone}</span>
+                    </div>
+                  )}
+                  {client.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {client.tags.map((t: any) => (
+                        <span key={t.tag.id} className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: t.tag.color + '18', color: t.tag.color }}>{t.tag.name}</span>
+                      ))}
                     </div>
                   )}
                 </div>

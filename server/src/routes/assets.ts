@@ -15,7 +15,6 @@ const assetMetaSchema = z.object({
   category: z.string().optional(),
   brandId: z.string().optional(),
   projectId: z.string().optional(),
-  tags: z.array(z.string()).optional(),
   license: z.record(z.unknown()).optional(),
   metadata: z.record(z.unknown()).optional(),
   version: z.coerce.number().int().optional(),
@@ -24,18 +23,20 @@ const assetMetaSchema = z.object({
 
 // GET /api/assets
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
-  const { type, brandId, search, page = '1', limit = '24' } = req.query as Record<string, string>;
+  const { type, brandId, search, page = '1', limit = '24', excludeMoodboard, excludeProjectAssets } = req.query as Record<string, string>;
 
   const where: Record<string, unknown> = { userId: req.user!.id };
   if (type) where.type = type;
   if (brandId) where.brandId = brandId;
   if (search) where.name = { contains: search, mode: 'insensitive' };
+  if (excludeMoodboard === 'true') where.type = { not: 'moodboard' };
+  if (excludeProjectAssets === 'true') where.projectId = null;
 
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const [assets, total] = await Promise.all([
     prisma.asset.findMany({
       where,
-      include: { brand: true },
+      include: { brand: true, tags: { include: { tag: true } } },
       orderBy: { createdAt: 'desc' },
       skip,
       take: parseInt(limit),
@@ -50,10 +51,6 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 router.post('/', createUpload('assets').single('file'), processUpload('assets'), async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
 
-  let parsedTags: string[] = [];
-  if (req.body.tags) {
-    try { parsedTags = JSON.parse(req.body.tags); } catch { parsedTags = []; }
-  }
   let parsedMetadata: Record<string, unknown> = {};
   if (req.body.metadata) {
     try { parsedMetadata = JSON.parse(req.body.metadata); } catch { parsedMetadata = {}; }
@@ -64,7 +61,6 @@ router.post('/', createUpload('assets').single('file'), processUpload('assets'),
   }
   const parsed = assetMetaSchema.safeParse({
     ...req.body,
-    tags: parsedTags,
     metadata: parsedMetadata,
     license: parsedLicense,
   });
@@ -102,7 +98,7 @@ router.post('/link', async (req: AuthRequest, res: Response): Promise<void> => {
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const asset = await prisma.asset.findFirst({
     where: { id: req.params.id as string, userId: req.user!.id },
-    include: { brand: true, project: true },
+    include: { brand: true, project: true, tags: { include: { tag: true } } },
   });
   if (!asset) { res.status(404).json({ error: 'Asset not found' }); return; }
 

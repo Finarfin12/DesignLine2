@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Package, Search, Upload, Trash2, X, Image, FileText, Type, Star, Pencil, Maximize2 } from 'lucide-react';
 import api, { getFileUrl } from '../lib/api';
+import TagManager from '../components/TagManager';
 
 const ASSET_TYPES = ['font', 'color', 'template', 'icon', 'image', 'mockup', 'palette'] as const;
 const TYPE_ICONS: Record<string, React.ElementType> = { font: Type, template: FileText, icon: Star, image: Image, mockup: Package, color: Package, palette: Package };
@@ -18,7 +19,7 @@ const uploadSchema = z.object({
 });
 type UploadForm = z.infer<typeof uploadSchema>;
 
-interface Asset { id: string; name: string; type: string; fileUrl: string; fileSize: number; mimeType: string; usageCount: number; createdAt: string; projectId?: string; metadata?: { colors?: string[]; description?: string }; brand?: { name: string } }
+interface Asset { id: string; name: string; type: string; fileUrl: string; fileSize: number; mimeType: string; usageCount: number; createdAt: string; projectId?: string; metadata?: { colors?: string[]; description?: string }; brand?: { name: string }; tags?: { tag: { id: string; name: string; color: string } }[] }
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -37,7 +38,9 @@ export default function Assets() {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [fontPreview, setFontPreview] = useState<Asset | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { data: allTags = [] } = useQuery({ queryKey: ['tags'], queryFn: () => api.get('/api/tags').then(r => r.data) });
 
   const { data, isLoading } = useQuery({
     queryKey: ['assets', search, typeFilter],
@@ -78,7 +81,12 @@ export default function Assets() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['assets'] }); setEditAsset(null); },
   });
 
-  const assets: Asset[] = (data?.assets ?? []).filter((a: Asset) => a.type !== 'moodboard' && !a.projectId);
+  const assets: Asset[] = (data?.assets ?? []).filter((a: Asset) => {
+    if (a.type === 'moodboard' || a.projectId) return false;
+    if (selectedTagIds.length === 0) return true;
+    const assetTagIds = (a.tags ?? []).map(t => t.tag.id);
+    return selectedTagIds.some(id => assetTagIds.includes(id));
+  });
   const isImage = (mime?: string) => !!mime?.startsWith('image/');
 
   return (
@@ -95,7 +103,7 @@ export default function Assets() {
       </div>
 
       {/* Type Filter Buttons */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2">
         {['', ...ASSET_TYPES].map(t => (
           <button
             key={t}
@@ -110,6 +118,34 @@ export default function Assets() {
           </button>
         ))}
       </div>
+
+      {/* Tag Filter */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {allTags.map((tag: any) => (
+            <button
+              key={tag.id}
+              onClick={() => setSelectedTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id])}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                selectedTagIds.includes(tag.id)
+                  ? 'border-current shadow-sm ring-1 ring-current'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+              style={{ backgroundColor: tag.color + '18', color: tag.color }}
+            >
+              {tag.name}
+            </button>
+          ))}
+          {selectedTagIds.length > 0 && (
+            <button
+              onClick={() => setSelectedTagIds([])}
+              className="px-2 py-1 rounded-full text-[11px] font-semibold text-surface-400 hover:text-surface-700 border border-dashed border-surface-300"
+            >
+              <X className="w-3 h-3 inline" /> Hapus filter
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Grid */}
       {isLoading ? (
@@ -167,6 +203,13 @@ export default function Assets() {
                     <span className="text-xs font-mono text-surface-400">{formatSize(a.fileSize)}</span>
                   </div>
                   {a.brand && <p className="text-[11px] font-medium text-surface-500 mt-2 truncate">Brand: {a.brand.name}</p>}
+                  {a.tags && a.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {a.tags.map(t => (
+                        <span key={t.tag.id} className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold" style={{ backgroundColor: t.tag.color + '18', color: t.tag.color }}>{t.tag.name}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );

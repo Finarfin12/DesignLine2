@@ -11,7 +11,7 @@ const STATUS_LABEL_DASHBOARD: Record<string, string> = {
 
 export default function Dashboard() {
   const { data: projectsData } = useQuery({ queryKey: ['projects-all'], queryFn: () => api.get('/api/projects?limit=100').then(r => r.data) });
-  const { data: assetsData } = useQuery({ queryKey: ['assets-all'], queryFn: () => api.get('/api/assets?limit=1').then(r => r.data) });
+  const { data: assetsData } = useQuery({ queryKey: ['assets-all'], queryFn: () => api.get('/api/assets?limit=1&excludeMoodboard=true&excludeProjectAssets=true').then(r => r.data) });
   const { data: emailsData } = useQuery({ queryKey: ['emails-recent'], queryFn: () => api.get('/api/email/logs?limit=5').then(r => r.data) });
   const { data: brands } = useQuery({ queryKey: ['brands-all'], queryFn: () => api.get('/api/brands').then(r => r.data) });
 

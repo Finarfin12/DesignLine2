@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Archive, Palette, Package,
-  Mail, Settings, LogOut, Users, Moon, Sun, Calendar, Pipette, LayoutGrid, Lightbulb
+  Mail, Settings, LogOut, Users, Moon, Sun, Calendar, Pipette, LayoutGrid, Lightbulb, PanelLeftClose
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -20,7 +20,12 @@ const navItems = [
   { to: '/email',    icon: Mail,            label: 'Email' },
 ];
 
-export default function Sidebar() {
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: Props) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -41,19 +46,26 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-white border-r border-surface-200 flex flex-col h-screen sticky top-0">
-      {/* Logo */}
-      <div className="px-6 py-6 border-b border-surface-200">
+    <aside className={`${isOpen ? 'w-64' : 'w-0'} flex-shrink-0 bg-white border-r border-surface-200 flex flex-col h-screen sticky top-0 overflow-hidden transition-all duration-200`}>
+      {/* Logo + Close */}
+      <div className="px-6 py-6 border-b border-surface-200 flex items-center justify-between min-w-64">
         <div className="flex items-center gap-3">
           <div className="flex flex-col">
             <span className="font-bold text-lg text-surface-900 leading-tight">Design Line</span>
             <span className="text-[10px] uppercase tracking-wider text-surface-500 font-semibold">Workflow Hub</span>
           </div>
         </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400 hover:text-surface-700 transition-colors"
+          title="Tutup sidebar"
+        >
+          <PanelLeftClose className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto min-w-64">
         <p className="px-3 mb-3 text-xs font-semibold text-surface-400 uppercase tracking-wider">Modul</p>
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
@@ -71,7 +83,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom: Settings + User */}
-      <div className="px-4 pb-6 border-t border-surface-200 pt-4 space-y-1">
+      <div className="px-4 pb-6 border-t border-surface-200 pt-4 space-y-1 min-w-64">
         <NavLink
           to="/settings"
           className={({ isActive }) =>

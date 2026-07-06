@@ -18,7 +18,7 @@ const clientSchema = z.object({
 router.get('/', async (req: AuthRequest, res: Response) => {
   const clients = await prisma.client.findMany({
     where: { userId: req.user!.id },
-    include: { _count: { select: { projects: true } } },
+    include: { _count: { select: { projects: true } }, tags: { include: { tag: true } } },
     orderBy: { name: 'asc' },
   });
   res.json(clients);
@@ -42,7 +42,7 @@ router.post('/', async (req: AuthRequest, res: Response): Promise<void> => {
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const client = await prisma.client.findFirst({
     where: { id: req.params.id as string, userId: req.user!.id },
-    include: { _count: { select: { projects: true } } },
+    include: { _count: { select: { projects: true } }, tags: { include: { tag: true } } },
   });
   if (!client) { res.status(404).json({ error: 'Client not found' }); return; }
   res.json(client);
